@@ -117,10 +117,11 @@ namespace DesktopGridSnapper
             }
 
             // Clean up overlays for screens that no longer exist
+            var currentScreens = new HashSet<Screen>(Screen.AllScreens);
             var screensToRemove = new List<Screen>();
             foreach (var screen in overlays.Keys)
             {
-                if (!Screen.AllScreens.Contains(screen))
+                if (!currentScreens.Contains(screen))
                 {
                     screensToRemove.Add(screen);
                 }

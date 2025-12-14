@@ -151,10 +151,11 @@ namespace DesktopGridSnapper
 
         private GridOverlay? GetOverlayForPoint(Dictionary<Screen, GridOverlay> overlays, Point pt)
         {
-            foreach (var screen in Screen.AllScreens)
+            // Only check screens that have overlays
+            foreach (var kvp in overlays)
             {
-                if (screen.Bounds.Contains(pt) && overlays.TryGetValue(screen, out var overlay))
-                    return overlay;
+                if (kvp.Key.Bounds.Contains(pt))
+                    return kvp.Value;
             }
             return null;
         }
