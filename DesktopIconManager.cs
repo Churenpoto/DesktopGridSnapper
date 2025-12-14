@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
+using Microsoft.Win32;
 
 namespace DesktopGridSnapper
 {
@@ -383,17 +384,38 @@ namespace DesktopGridSnapper
         private const int LVS_ALIGNMASK = 0x0C00;
         private const int LVS_ALIGNGRID = 0x0800;
 
-        public bool IsAutoArrangeOrSnapToGridEnabled()
+        private const int LVM_GETEXTENDEDLISTVIEWSTYLE = LVM_FIRST + 55;
+
+        public bool IsAutoArrangeActiveByBehavior()
         {
             IntPtr list = FindDesktopListView();
             if (list == IntPtr.Zero) return false;
 
-            int style = GetWindowLong(list, GWL_STYLE);
+            int idx = GetFirstSelectedOrFocused(list);
+            if (idx < 0) return false;
 
-            bool autoArrange = (style & LVS_AUTOARRANGE) != 0;
-            bool snapToGrid = (style & LVS_ALIGNGRID) != 0;
+            if (!TryGetItemPosition(list, idx, out var original)) return false;
 
-            return autoArrange || snapToGrid;
+            // 少しだけずらす
+            int delta = 10;
+            int testX = original.x + delta;
+            int testY = original.y + delta;
+
+            if (!TrySetItemPosition(list, idx, testX, testY))
+                return false;
+
+            // 少し待ってから位置を再取得
+            System.Threading.Thread.Sleep(100);
+
+            if (!TryGetItemPosition(list, idx, out var after)) return false;
+
+            // 元に戻っていたら整列されていると判断
+            bool snappedBack = Math.Abs(after.x - testX) > 2 || Math.Abs(after.y - testY) > 2;
+
+            // 元の位置に戻す
+            TrySetItemPosition(list, idx, original.x, original.y);
+
+            return snappedBack;
         }
 
 

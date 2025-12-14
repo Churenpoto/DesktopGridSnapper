@@ -47,12 +47,13 @@ namespace DesktopGridSnapper
 
             ApplyGrid();
 
-            if (!silentMode && iconManager.IsAutoArrangeOrSnapToGridEnabled())
+            if (!silentMode && iconManager.IsAutoArrangeActiveByBehavior())
             {
                 MessageBox.Show(
-                    "デスクトップの「アイコンの自動整列」または「等間隔に整列」が有効になっています。\n\n" +
-                    "これらが有効だと、アイコンのスナップが正しく動作しない可能性があります。\n\n" +
-                    "デスクトップを右クリックして、両方のチェックを外してください。",
+                    "デスクトップの「アイコンの自動整列」または「等間隔に整列」が有効になっている可能性があります。\n\n" +
+                    "これらが有効だと、アイコンのスナップが正しく動作しないことがあります。\n\n" +
+                    "デスクトップを右クリックして、両方のチェックを外してください。\n\n" +
+                    "または他のアプリがアイコン位置を制御していないか確認してください。",
                     "整列設定の確認",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
