@@ -187,6 +187,7 @@ namespace DesktopGridSnapper
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int x; public int y; }
 
+
         private bool TryGetItemPosition(IntPtr list, int index, out POINT pt)
         {
             pt = default;
@@ -214,6 +215,12 @@ namespace DesktopGridSnapper
                     return false;
 
                 pt = BytesToStruct<POINT>(buf);
+
+                // ★ ここでグローバル座標に補正
+                NativeMethods.GetWindowRect(list, out NativeMethods.RECT listRect);
+                pt.x += listRect.Left;
+                pt.y += listRect.Top;
+
                 return true;
             }
             finally
@@ -224,6 +231,88 @@ namespace DesktopGridSnapper
             }
         }
 
+        /*
+                private bool TryGetItemPosition(IntPtr list, int index, out POINT pt)
+                {
+                    pt = default;
+
+                    NativeMethods.GetWindowThreadProcessId(list, out uint pid);
+                    IntPtr hProc = NativeMethods.OpenProcess(
+                        NativeMethods.PROCESS_VM_OPERATION | NativeMethods.PROCESS_VM_READ | NativeMethods.PROCESS_VM_WRITE,
+                        false, pid);
+
+                    if (hProc == IntPtr.Zero) return false;
+
+                    IntPtr remote = IntPtr.Zero;
+                    try
+                    {
+                        int size = Marshal.SizeOf<POINT>();
+                        remote = NativeMethods.VirtualAllocEx(hProc, IntPtr.Zero, (uint)size,
+                            NativeMethods.MEM_COMMIT | NativeMethods.MEM_RESERVE, NativeMethods.PAGE_READWRITE);
+
+                        if (remote == IntPtr.Zero) return false;
+
+                        NativeMethods.SendMessage(list, LVM_GETITEMPOSITION, (IntPtr)index, remote);
+
+                        byte[] buf = new byte[size];
+                        if (!NativeMethods.ReadProcessMemory(hProc, remote, buf, size, out _))
+                            return false;
+
+                        pt = BytesToStruct<POINT>(buf);
+                        return true;
+                    }
+                    finally
+                    {
+                        if (remote != IntPtr.Zero)
+                            NativeMethods.VirtualFreeEx(hProc, remote, 0, NativeMethods.MEM_RELEASE);
+                        NativeMethods.CloseHandle(hProc);
+                    }
+                }
+        */
+
+        private bool TrySetItemPosition(IntPtr list, int index, int x, int y)
+        {
+            NativeMethods.GetWindowThreadProcessId(list, out uint pid);
+            IntPtr hProc = NativeMethods.OpenProcess(
+                NativeMethods.PROCESS_VM_OPERATION | NativeMethods.PROCESS_VM_WRITE,
+                false, pid);
+
+            if (hProc == IntPtr.Zero) return false;
+
+            IntPtr remote = IntPtr.Zero;
+            try
+            {
+                // ★ ここで list のウィンドウ位置を取得
+                NativeMethods.GetWindowRect(list, out NativeMethods.RECT listRect);
+
+                // ★ グローバル座標 → ローカル座標に補正
+                int localX = x - listRect.Left;
+                int localY = y - listRect.Top;
+
+                POINT pt = new POINT { x = localX, y = localY };
+                byte[] buf = StructToBytes(pt);
+
+                remote = NativeMethods.VirtualAllocEx(hProc, IntPtr.Zero, (uint)buf.Length,
+                    NativeMethods.MEM_COMMIT | NativeMethods.MEM_RESERVE, NativeMethods.PAGE_READWRITE);
+
+                if (remote == IntPtr.Zero) return false;
+
+                if (!NativeMethods.WriteProcessMemory(hProc, remote, buf, buf.Length, out _))
+                    return false;
+
+                NativeMethods.SendMessage(list, LVM_SETITEMPOSITION32, (IntPtr)index, remote);
+                return true;
+            }
+            finally
+            {
+                if (remote != IntPtr.Zero)
+                    NativeMethods.VirtualFreeEx(hProc, remote, 0, NativeMethods.MEM_RELEASE);
+                NativeMethods.CloseHandle(hProc);
+            }
+        }
+
+
+        /*
         private bool TrySetItemPosition(IntPtr list, int index, int x, int y)
         {
             NativeMethods.GetWindowThreadProcessId(list, out uint pid);
@@ -257,7 +346,7 @@ namespace DesktopGridSnapper
                 NativeMethods.CloseHandle(hProc);
             }
         }
-
+*/
         private static byte[] StructToBytes<T>(T obj) where T : struct
         {
             int size = Marshal.SizeOf<T>();
@@ -331,6 +420,19 @@ namespace DesktopGridSnapper
 
             [DllImport("kernel32.dll", SetLastError = true)]
             public static extern bool WriteProcessMemory(IntPtr hProc, IntPtr addr, byte[] buf, int size, out IntPtr written);
+
+            [StructLayout(LayoutKind.Sequential)]
+            public struct RECT
+            {
+                public int Left;
+                public int Top;
+                public int Right;
+                public int Bottom;
+            }
+
+            [DllImport("user32.dll")]
+            public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -15,7 +16,9 @@ namespace DesktopGridSnapper
         private Color gridColor;
 
         public Screen TargetScreen => targetScreen;
-
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public bool ReadyToShow { get; set; } = false;
         public void UpdateGrid(
             int newCellWidth,
             int newCellHeight,
@@ -83,6 +86,20 @@ namespace DesktopGridSnapper
 
             BackColor = Color.Black;
             TransparencyKey = Color.Black;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            if (ReadyToShow)
+            {
+                Show();
+            }
+            else
+            {
+                Hide();
+            }
         }
 
 

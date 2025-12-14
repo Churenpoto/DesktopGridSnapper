@@ -8,25 +8,17 @@ namespace DesktopGridSnapper
 {
     public partial class MainForm : Form
     {
-        private GridOverlay? overlay;
-        private readonly DesktopIconManager iconManager = new DesktopIconManager();
+        private readonly bool silentMode = false;
 
-        private AppSettings settings = new AppSettings();
-        private readonly string settingsPath =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                         "DesktopGridSnapper", "settings.json");
-
-        private Screen selectedScreen = Screen.PrimaryScreen;
-        private Color gridColor = Color.FromArgb(unchecked((int)0x78007AFF));
-
-        private bool gridEnabled = true;
-
-        private Color gridBaseColor = Color.CornflowerBlue;
-        private int gridAlpha = 120;
-
-        public MainForm()
+        public MainForm(string[]? args = null)
         {
             InitializeComponent();
+
+            if (args != null && Array.Exists(args, a => a.Equals("-silent", StringComparison.OrdinalIgnoreCase)))
+            {
+                silentMode = true;
+                gridEnabled = false; // ★ silent起動時はグリッド非表示に
+            }
 
             trayMenu = new ContextMenuStrip();
             trayMenu.Items.Add("Open Settings", null, trayOpen_Click);
@@ -42,20 +34,53 @@ namespace DesktopGridSnapper
                 Visible = true
             };
             trayIcon.DoubleClick += trayOpen_Click;
+            trayIcon.MouseUp += trayIcon_MouseUp;
             timer1.Tick += timer1_Tick;
 
             LoadScreens();
             LoadSettings();
 
-            // 画面選択を確定
             if (comboScreens.SelectedIndex >= 0 && comboScreens.SelectedIndex < Screen.AllScreens.Length)
                 selectedScreen = Screen.AllScreens[comboScreens.SelectedIndex];
             else
                 selectedScreen = Screen.PrimaryScreen;
 
-            // 起動時に自動適用（必要なければコメントアウトOK）
             ApplyGrid();
-            this.AcceptButton = applyButton;
+
+            if (!silentMode)
+            {
+                this.AcceptButton = applyButton;
+            }
+            else
+            {
+                this.WindowState = FormWindowState.Minimized;
+                this.ShowInTaskbar = false;
+                this.Visible = false;
+            }
+        }
+
+        private GridOverlay? overlay;
+        private readonly DesktopIconManager iconManager = new DesktopIconManager();
+
+        private AppSettings settings = new AppSettings();
+
+        private readonly string settingsPath =
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DGSsettings.json");
+
+        private Screen selectedScreen = Screen.PrimaryScreen;
+        private Color gridColor = Color.FromArgb(unchecked((int)0x78007AFF));
+
+        private bool gridEnabled = true;
+
+        private Color gridBaseColor = Color.CornflowerBlue;
+        private int gridAlpha = 120;
+
+        private void trayIcon_MouseUp(object? sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                trayMenu.Show(Cursor.Position);
+            }
         }
 
         private void LoadScreens()
@@ -79,8 +104,7 @@ namespace DesktopGridSnapper
 
         private void ApplyGrid()
         {
-            Color finalGridColor =
-                Color.FromArgb(gridAlpha, gridBaseColor);
+            Color finalGridColor = Color.FromArgb(gridAlpha, gridBaseColor);
 
             if (overlay == null)
             {
@@ -106,13 +130,11 @@ namespace DesktopGridSnapper
                 );
             }
 
-            if (gridEnabled)
+            if (gridEnabled && !silentMode)
                 overlay.Show();
             else
-                overlay.Hide();
+                overlay?.Hide();
         }
-
-
 
         private void applyButton_Click(object sender, EventArgs e)
         {
@@ -142,7 +164,6 @@ namespace DesktopGridSnapper
                 settings = new AppSettings();
             }
 
-            // UIへ反映（範囲外は丸める）
             numericCellW.Value = ClampToNumeric(numericCellW, settings.CellWidth);
             numericCellH.Value = ClampToNumeric(numericCellH, settings.CellHeight);
             numericOffsetX.Value = ClampToNumeric(numericOffsetX, settings.OffsetX);
@@ -154,8 +175,7 @@ namespace DesktopGridSnapper
             gridBaseColor = Color.FromArgb(settings.GridColorRgb);
             gridAlpha = settings.GridAlpha;
 
-            panelGridColor.BackColor =
-                Color.FromArgb(gridAlpha, gridBaseColor);
+            panelGridColor.BackColor = Color.FromArgb(gridAlpha, gridBaseColor);
             numericGridAlpha.Value = gridAlpha;
         }
 
@@ -180,6 +200,7 @@ namespace DesktopGridSnapper
             string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(settingsPath, json);
         }
+
         private void trayOpen_Click(object? sender, EventArgs e)
         {
             Show();
@@ -195,9 +216,7 @@ namespace DesktopGridSnapper
             {
                 gridBaseColor = colorDialog1.Color;
 
-                Color finalColor =
-                    Color.FromArgb(gridAlpha, gridBaseColor);
-
+                Color finalColor = Color.FromArgb(gridAlpha, gridBaseColor);
                 panelGridColor.BackColor = finalColor;
 
                 if (overlay != null)
@@ -214,13 +233,23 @@ namespace DesktopGridSnapper
 
             if (gridEnabled)
             {
-                overlay?.Show();
+                if (overlay == null)
+                {
+                    ApplyGrid(); // overlay を生成
+                }
+
+                BeginInvoke(() =>
+                {
+                    if (overlay != null)
+                    {
+                        overlay.Show();
+                    }
+                });
             }
             else
             {
-                overlay?.Hide(); // ★ Closeしない
+                overlay?.Hide();
             }
-
         }
 
         private void trayExit_Click(object? sender, EventArgs e)
@@ -243,6 +272,7 @@ namespace DesktopGridSnapper
             overlay?.Close();
             base.OnFormClosing(e);
         }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
@@ -259,9 +289,8 @@ namespace DesktopGridSnapper
             if (overlay != null)
             {
                 overlay.SetGridOpacity(gridAlpha);
-                overlay.Invalidate(); // ★ 再描画（これが無いと見た目が変わらない）
+                overlay.Invalidate();
             }
         }
-
     }
 }
