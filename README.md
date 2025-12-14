@@ -3,6 +3,8 @@
 Windows 11 25H2 では IconSpacing 及び IconVerticalSpacing が無視され、デスクトップのアイコン配置間隔がレジストリを通じて自由に設定できなくなりました。
 DesktopGridSnapperは、デスクトップ上のアイコンをグリッドにスナップさせ、アイコン配置を自由にするツールです。本ツールは、カスタマイズ可能なグリッドおよび設定ウィンドウを提供し、簡単にデスクトップ環境を整えることができます。
 
+This program was created using ChatGPT and Copilot
+
 ## 主な機能
 
 - デスクトップグリッドの表示とカスタマイズ
