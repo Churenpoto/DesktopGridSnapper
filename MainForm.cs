@@ -144,8 +144,8 @@ namespace DesktopGridSnapper
                 );
             }
 
-            if (gridEnabled && !silentMode)
-                overlay.Show();
+            if (gridEnabled)
+                    overlay.Show();
             else
                 overlay?.Hide();
         }
