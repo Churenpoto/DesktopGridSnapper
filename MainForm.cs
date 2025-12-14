@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Forms;
@@ -8,7 +9,7 @@ namespace DesktopGridSnapper
 {
     public partial class MainForm : Form
     {
-        private GridOverlay? overlay;
+        private Dictionary<Screen, GridOverlay> overlays = new Dictionary<Screen, GridOverlay>();
         private readonly DesktopIconManager iconManager = new DesktopIconManager();
 
         private AppSettings settings = new AppSettings();
@@ -82,34 +83,54 @@ namespace DesktopGridSnapper
             Color finalGridColor =
                 Color.FromArgb(gridAlpha, gridBaseColor);
 
-            if (overlay == null)
+            // Apply grid settings to all screens
+            foreach (var screen in Screen.AllScreens)
             {
-                System.Diagnostics.Debug.WriteLine("Create GridOverlay");
-                overlay = new GridOverlay(
-                    selectedScreen,
-                    (int)numericCellW.Value,
-                    (int)numericCellH.Value,
-                    (int)numericOffsetX.Value,
-                    (int)numericOffsetY.Value,
-                    finalGridColor
-                );
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("Update GridOverlay");
-                overlay.UpdateGrid(
-                    (int)numericCellW.Value,
-                    (int)numericCellH.Value,
-                    (int)numericOffsetX.Value,
-                    (int)numericOffsetY.Value,
-                    finalGridColor
-                );
+                if (!overlays.ContainsKey(screen))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Create GridOverlay for {screen.DeviceName}");
+                    overlays[screen] = new GridOverlay(
+                        screen,
+                        (int)numericCellW.Value,
+                        (int)numericCellH.Value,
+                        (int)numericOffsetX.Value,
+                        (int)numericOffsetY.Value,
+                        finalGridColor
+                    );
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Update GridOverlay for {screen.DeviceName}");
+                    overlays[screen].UpdateGrid(
+                        (int)numericCellW.Value,
+                        (int)numericCellH.Value,
+                        (int)numericOffsetX.Value,
+                        (int)numericOffsetY.Value,
+                        finalGridColor
+                    );
+                }
+
+                if (gridEnabled)
+                    overlays[screen].Show();
+                else
+                    overlays[screen].Hide();
             }
 
-            if (gridEnabled)
-                overlay.Show();
-            else
-                overlay.Hide();
+            // Clean up overlays for screens that no longer exist
+            var screensToRemove = new List<Screen>();
+            foreach (var screen in overlays.Keys)
+            {
+                if (!Screen.AllScreens.Contains(screen))
+                {
+                    screensToRemove.Add(screen);
+                }
+            }
+
+            foreach (var screen in screensToRemove)
+            {
+                overlays[screen].Close();
+                overlays.Remove(screen);
+            }
         }
 
 
@@ -122,8 +143,7 @@ namespace DesktopGridSnapper
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            if (overlay != null)
-                iconManager.SnapIconsToGrid(overlay);
+            iconManager.SnapIconsToGrids(overlays);
         }
 
         private void LoadSettings()
@@ -200,7 +220,7 @@ namespace DesktopGridSnapper
 
                 panelGridColor.BackColor = finalColor;
 
-                if (overlay != null)
+                foreach (var overlay in overlays.Values)
                 {
                     overlay.SetGridColor(finalColor);
                     overlay.Invalidate();
@@ -214,11 +234,13 @@ namespace DesktopGridSnapper
 
             if (gridEnabled)
             {
-                overlay?.Show();
+                foreach (var overlay in overlays.Values)
+                    overlay.Show();
             }
             else
             {
-                overlay?.Hide(); // ★ Closeしない
+                foreach (var overlay in overlays.Values)
+                    overlay.Hide(); // ★ Closeしない
             }
 
         }
@@ -226,7 +248,8 @@ namespace DesktopGridSnapper
         private void trayExit_Click(object? sender, EventArgs e)
         {
             trayIcon.Visible = false;
-            overlay?.Close();
+            foreach (var overlay in overlays.Values)
+                overlay.Close();
             Application.Exit();
         }
 
@@ -240,7 +263,8 @@ namespace DesktopGridSnapper
             }
 
             SaveSettings();
-            overlay?.Close();
+            foreach (var overlay in overlays.Values)
+                overlay.Close();
             base.OnFormClosing(e);
         }
         protected override void OnResize(EventArgs e)
@@ -256,7 +280,7 @@ namespace DesktopGridSnapper
         {
             gridAlpha = (int)numericGridAlpha.Value;
 
-            if (overlay != null)
+            foreach (var overlay in overlays.Values)
             {
                 overlay.SetGridOpacity(gridAlpha);
                 overlay.Invalidate(); // ★ 再描画（これが無いと見た目が変わらない）

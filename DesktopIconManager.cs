@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace DesktopGridSnapper
 {
@@ -35,7 +36,15 @@ namespace DesktopGridSnapper
 
         public void SnapIconsToGrid(GridOverlay grid)
         {
-            if (grid == null) return;
+            var overlays = new Dictionary<Screen, GridOverlay>();
+            if (grid != null)
+                overlays[grid.TargetScreen] = grid;
+            SnapIconsToGrids(overlays);
+        }
+
+        public void SnapIconsToGrids(Dictionary<Screen, GridOverlay> overlays)
+        {
+            if (overlays == null || overlays.Count == 0) return;
 
             bool altPressed = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
             bool left = (GetAsyncKeyState(VK_LEFT) & 0x8000) != 0;
@@ -73,7 +82,11 @@ namespace DesktopGridSnapper
                 var targets = new List<(int idx, Point pos)>();
                 foreach (var item in originals)
                 {
-                    var cell = grid.GetCellFromPoint(new Point(item.pt.x, item.pt.y));
+                    Point iconPos = new Point(item.pt.x, item.pt.y);
+                    GridOverlay? grid = GetOverlayForPoint(overlays, iconPos);
+                    if (grid == null) continue;
+
+                    var cell = grid.GetCellFromPoint(iconPos);
                     if (right) cell.Col++;
                     if (left) cell.Col--;
                     if (down) cell.Row++;
@@ -124,12 +137,26 @@ namespace DesktopGridSnapper
                 if (!TryGetItemPosition(list2, idx, out POINT pt2))
                     continue;
 
-                Point snapped = grid.GetSnappedPoint(new Point(pt2.x, pt2.y));
+                Point iconPos = new Point(pt2.x, pt2.y);
+                GridOverlay? grid = GetOverlayForPoint(overlays, iconPos);
+                if (grid == null) continue;
+
+                Point snapped = grid.GetSnappedPoint(iconPos);
                 if (snapped.X == pt2.x && snapped.Y == pt2.y)
                     continue;
 
                 TrySetItemPosition(list2, idx, snapped.X, snapped.Y);
             }
+        }
+
+        private GridOverlay? GetOverlayForPoint(Dictionary<Screen, GridOverlay> overlays, Point pt)
+        {
+            foreach (var screen in Screen.AllScreens)
+            {
+                if (screen.Bounds.Contains(pt) && overlays.TryGetValue(screen, out var overlay))
+                    return overlay;
+            }
+            return null;
         }
 
         private int GetFirstSelectedOrFocused(IntPtr list)
