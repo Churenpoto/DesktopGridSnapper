@@ -375,6 +375,28 @@ namespace DesktopGridSnapper
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        private const int GWL_STYLE = -16;
+        private const int LVS_AUTOARRANGE = 0x0100;
+        private const int LVS_ALIGNMASK = 0x0C00;
+        private const int LVS_ALIGNGRID = 0x0800;
+
+        public bool IsAutoArrangeOrSnapToGridEnabled()
+        {
+            IntPtr list = FindDesktopListView();
+            if (list == IntPtr.Zero) return false;
+
+            int style = GetWindowLong(list, GWL_STYLE);
+
+            bool autoArrange = (style & LVS_AUTOARRANGE) != 0;
+            bool snapToGrid = (style & LVS_ALIGNGRID) != 0;
+
+            return autoArrange || snapToGrid;
+        }
+
+
         internal static class NativeMethods
         {
             public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
@@ -432,6 +454,7 @@ namespace DesktopGridSnapper
 
             [DllImport("user32.dll")]
             public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
 
         }
     }

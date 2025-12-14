@@ -47,6 +47,18 @@ namespace DesktopGridSnapper
 
             ApplyGrid();
 
+            if (!silentMode && iconManager.IsAutoArrangeOrSnapToGridEnabled())
+            {
+                MessageBox.Show(
+                    "デスクトップの「アイコンの自動整列」または「等間隔に整列」が有効になっています。\n\n" +
+                    "これらが有効だと、アイコンのスナップが正しく動作しない可能性があります。\n\n" +
+                    "デスクトップを右クリックして、両方のチェックを外してください。",
+                    "整列設定の確認",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+            }
+
             if (!silentMode)
             {
                 this.AcceptButton = applyButton;
@@ -57,6 +69,7 @@ namespace DesktopGridSnapper
                 this.ShowInTaskbar = false;
                 this.Visible = false;
             }
+
         }
 
         private GridOverlay? overlay;
