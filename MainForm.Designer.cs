@@ -56,6 +56,7 @@ namespace DesktopGridSnapper
             labelGridAlpha = new Label();
             numericGridAlpha = new NumericUpDown();
             trayMenu = new ContextMenuStrip(components);
+            toggleButton = new Button();
             ((System.ComponentModel.ISupportInitialize)numericCellW).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericCellH).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericOffsetX).BeginInit();
@@ -116,7 +117,7 @@ namespace DesktopGridSnapper
             // 
             applyButton.Location = new Point(12, 200);
             applyButton.Name = "applyButton";
-            applyButton.Size = new Size(308, 34);
+            applyButton.Size = new Size(154, 34);
             applyButton.TabIndex = 13;
             applyButton.Text = "Apply";
             applyButton.Click += applyButton_Click;
@@ -195,9 +196,20 @@ namespace DesktopGridSnapper
             trayMenu.Name = "trayMenu";
             trayMenu.Size = new Size(61, 4);
             // 
+            // toggleButton
+            // 
+            toggleButton.Location = new Point(186, 200);
+            toggleButton.Name = "toggleButton";
+            toggleButton.Size = new Size(134, 34);
+            toggleButton.TabIndex = 14;
+            toggleButton.Text = "Toggle Grid";
+            toggleButton.UseVisualStyleBackColor = true;
+            toggleButton.Click += toggleButton_Click;
+            // 
             // MainForm
             // 
             ClientSize = new Size(340, 240);
+            Controls.Add(toggleButton);
             Controls.Add(labelGridAlpha);
             Controls.Add(numericGridAlpha);
             Controls.Add(labelScreen);
@@ -225,5 +237,6 @@ namespace DesktopGridSnapper
             ResumeLayout(false);
             PerformLayout();
         }
+        private Button toggleButton;
     }
 }

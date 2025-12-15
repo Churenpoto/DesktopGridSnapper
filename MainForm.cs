@@ -145,7 +145,7 @@ namespace DesktopGridSnapper
             }
 
             if (gridEnabled)
-                    overlay.Show();
+                overlay.Show();
             else
                 overlay?.Hide();
         }
@@ -305,6 +305,11 @@ namespace DesktopGridSnapper
                 overlay.SetGridOpacity(gridAlpha);
                 overlay.Invalidate();
             }
+        }
+
+        private void toggleButton_Click(object sender, EventArgs e)
+        {
+            trayToggleGrid_Click(sender, e);
         }
     }
 }
